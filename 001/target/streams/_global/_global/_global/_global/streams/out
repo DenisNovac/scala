@@ -1,0 +1,3 @@
+[0m[[0m[0mdebug[0m] [0m[0m[watch] [scalafirst / Compile / run] Found inputs: /home/denis/IdeaProjects/ScalaFirst/*.{java,scala},/home/denis/IdeaProjects/ScalaFirst/src/main/java/**/*.{java,scala},/home/denis/IdeaProjects/ScalaFirst/src/main/resources/**/*,/home/denis/IdeaProjects/ScalaFirst/src/main/scala/**/*.{java,scala},/home/denis/IdeaProjects/ScalaFirst/src/main/scala-2.13/**/*.{java,scala}[0m
+[0m[[0m[0minfo[0m] [0m[0m1. Monitoring source files for scalafirst/run...[0m
+[0m[[0m[0minfo[0m] [0m[0m   Press <enter> to interrupt or '?' for more options.[0m

@@ -16,5 +16,11 @@ object Factorial {
     case _ => tailrecFactorial(n-1, n*acc)
   }
 
-q
+  val l = List(0,1,2,3,4)
+  l.scanLeft(1)(_ + _)
+  l.scanLeft(1)((i: Int, j: Int)=>i+j)
+  l.foldLeft(1)(_+_)
+
+
+  //lazy val nl: List[Int] = 0 :: nl.scanLeft(1)(_ + _)
 }

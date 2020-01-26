@@ -1,0 +1,31 @@
+version: "3"
+services:
+  db:
+    container_name: db
+    image: postgres:alpine
+    networks:
+      overlay:
+        ipv4_address: 172.18.1.10
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=P@ssw0rd
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+
+networks:
+  overlay:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.1.0/24
+
+volumes:
+  db-data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/home/denis/develop/scala/doobie/db'

@@ -1,10 +1,9 @@
-package app
+package app.sources
 
 import cats.data.NonEmptyList
 import cats.effect.{Concurrent, ContextShift, IO}
-import cats.syntax.option._
 import com.typesafe.scalalogging.LazyLogging
-import fetch.{Data, DataSource, Fetch, FetchExecution}
+import fetch.{Data, DataSource, Fetch}
 
 class ListSource(list: List[String], maxBatch: Option[Int] = None)(implicit cf: ContextShift[IO])
     extends Data[Int, String]

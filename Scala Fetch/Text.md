@@ -6,7 +6,8 @@ https://www.47deg.com/blog/fetch-scala-library/
 
 - Запрашивать данные из нескольких источников одновременно;
 - Пакетами делать запросы к одному источнику;
-- Кэшировать.
+- Оптимизировать запросы;
+- Кэшировать запросы.
 
 Для этого в ней предоставляются средства, позволяющие писать чистый код без засорения конструкциями для кэширования/пакетирования и т.п.
 
@@ -272,7 +273,7 @@ class CaffeineFetchModule @Inject() (
 
 ## Пакеты запросов (Batching)
 
-Если скомбинировать два независимых запроса к одному источнику, Fetch объединит их в один запрос. Чтобы показать библиотеке, что запросы независимы - их нужно связать аппликативным оператором. Например:
+Пакетирование (Batching) в Fetch - это объединение запросов к одному источнику в один запрос. Чтобы показать библиотеке, что запросы независимы - их нужно связать аппликативным оператором. После этого их можно передавать в `Fetch.run` как раньше. Например:
 
 ```scala
 import fetch.fetchM  // инстансы Fetch для синтаксиса Cats
@@ -309,6 +310,7 @@ Fetch.run(findMany).unsafeRunSync
 
 ```scala
 override def maxBatchSize: Option[Int] = 2.some
+
 // INFO app.ListSource - IDs fetching in batch: NonEmptyList(0, 5)
 // INFO app.ListSource - IDs fetching in batch: NonEmptyList(1, 2)
 // INFO app.ListSource - IDs fetching in batch: NonEmptyList(3, 4)
@@ -328,4 +330,78 @@ println(Fetch.run(tupleD).unsafeRunSync())  // (Some(a),Some(a))
 // INFO app.ListSource - Processing element from index 0
 ```
 
-Т.е. индекс запросился только один раз, но вернулся кортеж.
+Индекс запросился только один раз, но в ответе вернулся кортеж из двух значений.
+
+## Комбинирование данных из разных источников
+
+Кобминирование данных из разных источников осуществляется во время вызова данных из разных источников в одном `Fetch.run`. В целом, этот механизм соответствует пакетным запросы к одному источнику, но внутри объектов Fetch источники будут указаны разные.
+
+Предположим, у нас есть дополнительный источник, который выдаёт рандомные целочисленные до какой-то границы:
+
+```scala
+class RandomSource(implicit cf: ContextShift[IO]) extends Data[Int, Int] with LazyLogging {
+
+  override def name: String          = "Random numbers generator"
+  private def instance: RandomSource = this
+
+  def source: DataSource[IO, Int, Int] = new DataSource[IO, Int, Int] {
+    override def data: Data[Int, Int] = instance
+
+    override def CF: Concurrent[IO] = Concurrent[IO]
+
+    override def fetch(max: Int): IO[Option[Int]] =
+      CF.delay {
+        logger.info(s"Getting next random by max $max")
+        scala.util.Random.nextInt(max).some
+      }
+  }
+}
+```
+
+Мы можем запросить эти данные в одном Fetch. Например, последовательно через for:
+
+```scala
+val listSource = new ListSource(List("a", "b", "c"))
+val randomSource = new RandomSource()
+
+def fetchMulti: Fetch[IO, (String, Int)] =
+  for {
+    rnd <- Fetch(3, randomSource.source)
+    char <- Fetch(rnd, listSource.source)
+  } yield (rnd, char)  //
+
+println(Fetch.run(fetchMulti).unsafeRunSync)  // например, (0,a)
+```
+
+### Комбинаторы
+
+Помимо `flatMap` в Fetch возможно использовать и другие комбинаторы. Например, `sequqnce` и `traverse` (последний уже был затронут выше) из cats.
+
+У `sequence` суть та же, что у traverse. Fetch.run умеет запускать `List[Fetch[_]]`, чем мы и пользуемся. `traverse` является смесью map и sequence, поэтому внутри Fetch они работают одинаково (типы тоже одинаковые, это видно из примеров).
+
+```scala
+def fetchRandomInt(max: Int) = Fetch(max, randomSource.source)
+
+val listFetch: List[Fetch[IO, Int]] = List(
+  Fetch(10, randomSource.source),
+  Fetch(10, randomSource.source),
+  Fetch(10, randomSource.source),
+  Fetch(10, randomSource.source),
+  Fetch(10, randomSource.source)
+)
+
+  
+val fetchTrv: Fetch[IO, List[Int]]
+  = List(10, 10, 10, 10, 10).traverse(fetchRandomInt)
+
+val fetchSeq: Fetch[IO, List[Int]] = listFetch.sequence
+
+println(Fetch.run(fetchSeq).unsafeRunSync)
+
+override def fetch(max: Int): IO[Option[Int]] =
+  CF.delay {
+    scala.util.Random.nextInt(max).some
+  }
+```
+
+Этот запрос выполняется с ошибкой. Например, в ответе можно увидеть `List(4, 4, 4, 4, 4)`. Это связано с оптимизацией получения данных по одинаковому ID, которая в данном случае не нужна.

@@ -1,15 +1,10 @@
-package app
+package app.examples
 
-import cats.effect.{ContextShift, IO, Timer}
+import app.ContextEntities
+import app.sources.ListSource
 import fetch.Fetch
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.global
-
-object SimpleExample extends App {
-  implicit val ec: ExecutionContext = global
-  implicit val cs: ContextShift[IO] = IO.contextShift(ec) // для Fetch.run и app.ListDataSource
-  implicit val timer: Timer[IO]     = IO.timer(ec) // для Fetch.run
+object SimpleExample extends App with ContextEntities {
 
   val list = List("a", "b", "c")
   val data = new ListSource(list)

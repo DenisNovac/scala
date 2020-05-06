@@ -1,13 +1,15 @@
-package app
+package app.examples
 
-import cats.effect.{ContextShift, IO, Timer}
-import cats.instances.list._
-import cats.syntax.traverse._ // traverse
-import cats.syntax.option._   // some
-import cats.syntax.apply._    // tupled
+import app.sources.ListSource
 
 import fetch.Fetch
-import fetch.fetchM // инстансы Fetch для синтаксиса Cats
+import fetch.fetchM
+
+import cats.effect.{ContextShift, IO, Timer}
+import cats.syntax.option._
+import cats.syntax.apply._
+import cats.instances.list._
+import cats.syntax.traverse._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global

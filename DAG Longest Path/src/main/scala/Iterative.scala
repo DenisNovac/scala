@@ -5,7 +5,7 @@ import scala.util.Random
 
 object Iterative extends App {
 
-  val l = 1 to 15 toList
+  val l = 1 to 5 toList
   /*println(split(l, 3))
   println(split(l, 1))*/
 
@@ -21,7 +21,8 @@ object Iterative extends App {
 
   val graphBuilder = new Graph(order, splits)
   val graph = graphBuilder.buildGraph
-  val calc = graphBuilder.calcLongest(graph)
+  //val calc = graphBuilder.calcLongestFromAll(graph)
+  graphBuilder.slightlyFasterSearch(graph) // быстрее примерно в полтора раза
 
 
   def splitMany(l: List[Int], maxSize: Int): List[List[Int]] = {

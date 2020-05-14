@@ -38,7 +38,11 @@ case class LinkedNode(node: AbstractNode, links: List[Edge]) {
 
 }
 
+case class ScoredRoute(score: Int, route: List[Edge])
+
 class Graph(order: List[Int], splits: List[List[Int]]) {
+
+  type MutableMap[K, V] = scala.collection.mutable.Map[K, V]
 
   val scores: Map[List[Int], Int]       = splits.map(l => l -> Random.nextInt(l.length * 10)).toMap
   val groups: Map[Int, List[List[Int]]] = splits.groupBy(l => l.head)
@@ -85,7 +89,7 @@ class Graph(order: List[Int], splits: List[List[Int]]) {
       group <- full.groupBy(n => n.node)
     } yield group._2.drop(1).foldRight(group._2.head)(_ + _)
 
-    println(linkedNodes.mkString(""))
+    //println(linkedNodes.mkString(""))
 
     /** Эта карта содержит ноды и ссылки на их LinkedNodes.
       * Она нужна чтобы из нод Edge находить следующие Edge
@@ -96,8 +100,10 @@ class Graph(order: List[Int], splits: List[List[Int]]) {
     nodesMap
   }
 
-  def calcLongest(graph: Map[AbstractNode, LinkedNode]) = {
-    val start = graph(Start())
+  def calcLongestFromAll(graph: Map[AbstractNode, LinkedNode]) = {
+    val t0           = System.nanoTime()
+    var countOfEdges = 0
+    val start        = graph(Start())
     //println(start)
 
     //List[List[Edge]] - лист путей
@@ -107,8 +113,10 @@ class Graph(order: List[Int], splits: List[List[Int]]) {
       for {
         e <- start.links
       } yield e.right match {
-        case n: End  => List(acc :+ e)
-        case n: Node => rec(graph(n), acc :+ e)
+        case n: End => List(acc :+ e)
+        case n: Node =>
+          countOfEdges += 1
+          rec(graph(n), acc :+ e)
       }
     }.flatten
 
@@ -122,8 +130,54 @@ class Graph(order: List[Int], splits: List[List[Int]]) {
 
     //println(routesToEnd.mkString("\n"))
     println(routesToEnd.head)
+
+    println(s"${(System.nanoTime() - t0) / 1000000} ms")
+    println("edges: " + countOfEdges)
     routesToEnd.head
 
   }
+
+  /** Нужно рекурсивно пройти по вершинам и для каждой вычислять и возвращать только длиннейший путь */
+  def slightlyFasterSearch(graph: Map[AbstractNode, LinkedNode]): ScoredRoute = {
+    val t0    = System.nanoTime()
+    val start = graph(Start())
+
+    var countOfEdges = 0
+
+    /*val cache: MutableMap[LinkedNode, ScoredRoute] =
+      scala.collection.mutable.Map.empty[LinkedNode, ScoredRoute] // кэш хранит единственное наиболее длинное ребро*/
+
+    def longestForNode(node: LinkedNode, acc: List[Edge], score: Int): ScoredRoute = {
+      val longest = {
+        for {
+          edge <- node.links
+        } yield {
+          edge.right match {
+            case End() => ScoredRoute(score, acc)
+            case n: Node =>
+              countOfEdges += 1
+              longestForNode(graph(n), acc :+ edge, score + edge.score)
+          }
+        }
+      }.maxBy(_.score)
+      cache += node -> longest
+      longest
+    }
+
+    val longest = longestForNode(start, List.empty[Edge], 0)
+
+    println(longest)
+    println(s"${(System.nanoTime() - t0) / 1000000} ms")
+    println("edges: " + countOfEdges)
+    //println(cache)
+
+    longest
+  }
+
+
+
+
+
+
 
 }

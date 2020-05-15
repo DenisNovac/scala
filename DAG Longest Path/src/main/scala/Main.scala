@@ -3,9 +3,9 @@ import scala.language.postfixOps
 
 import scala.util.Random
 
-object Iterative extends App {
+object Main extends App {
 
-  val l = 1 to 5 toList
+  val l = 1 to 15 toList
   /*println(split(l, 3))
   println(split(l, 1))*/
 
@@ -13,17 +13,17 @@ object Iterative extends App {
 
   val splits: List[List[Int]] = splitMany(l, maxSegmentSize)
 
-
-
   val order = l // порядок - исходный лист
 
   println("\n")
 
   val graphBuilder = new Graph(order, splits)
-  val graph = graphBuilder.buildGraph
-  //val calc = graphBuilder.calcLongestFromAll(graph)
-  graphBuilder.slightlyFasterSearch(graph) // быстрее примерно в полтора раза
+  val graph        = graphBuilder.buildGraph
+  println()
 
+  graphBuilder.calcLongestFromAll(graph)
+  //graphBuilder.slightlyFasterSearch(graph) // быстрее примерно в полтора раза
+  //graphBuilder.fastSearch(graph)
 
   def splitMany(l: List[Int], maxSize: Int): List[List[Int]] = {
     val newMaxSize =

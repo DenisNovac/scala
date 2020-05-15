@@ -1,4 +1,3 @@
-import Iterative.splits
 import scala.util.Random
 
 trait GraphEntity
@@ -44,7 +43,7 @@ class Graph(order: List[Int], splits: List[List[Int]]) {
 
   type MutableMap[K, V] = scala.collection.mutable.Map[K, V]
 
-  val scores: Map[List[Int], Int]       = splits.map(l => l -> Random.nextInt(l.length * 10)).toMap
+  val scores: Map[List[Int], Int]       = splits.map(l => l -> Random.nextInt(splits.length * 10)).toMap
   val groups: Map[Int, List[List[Int]]] = splits.groupBy(l => l.head)
   // Группы по первому элементу, по ним итерируемся через order
   //5 -> List(List(5), List(5, 6), List(5, 6, 7))
@@ -56,6 +55,7 @@ class Graph(order: List[Int], splits: List[List[Int]]) {
   //4 -> List(List(4), List(4, 5), List(4, 5, 6), List(4, 5, 6, 7))
 
   def buildGraph: Map[AbstractNode, LinkedNode] = {
+    val t0    = System.nanoTime()
     val edges = {
       for {
         o <- order
@@ -90,6 +90,7 @@ class Graph(order: List[Int], splits: List[List[Int]]) {
     } yield group._2.drop(1).foldRight(group._2.head)(_ + _)
 
     //println(linkedNodes.mkString(""))
+    println("Edges amount: " + linkedNodes.foldRight(0)((n, acc) => n.links.length + acc))
 
     /** Эта карта содержит ноды и ссылки на их LinkedNodes.
       * Она нужна чтобы из нод Edge находить следующие Edge
@@ -97,87 +98,56 @@ class Graph(order: List[Int], splits: List[List[Int]]) {
     val nodesMap: Map[AbstractNode, LinkedNode] = linkedNodes.map(ln => (ln.node, ln)).toMap
     //println(nodesMap.mkString("---------\n"))
 
+    println(s"Graph build done in ${(System.nanoTime() - t0) / 1000000} ms")
     nodesMap
   }
 
-  def calcLongestFromAll(graph: Map[AbstractNode, LinkedNode]) = {
-    val t0           = System.nanoTime()
-    var countOfEdges = 0
-    val start        = graph(Start())
-    //println(start)
-
-    //List[List[Edge]] - лист путей
-    // Найти все пути в End из Start
-
-    def rec(start: LinkedNode, acc: List[Edge]): List[List[Edge]] = {
-      for {
-        e <- start.links
-      } yield e.right match {
-        case n: End => List(acc :+ e)
-        case n: Node =>
-          countOfEdges += 1
-          rec(graph(n), acc :+ e)
-      }
-    }.flatten
-
-    val routesToEnd =
-      rec(start, List.empty[Edge])
-        .map { listOfEdges =>
-          val scores = listOfEdges.foldRight(0)((e, acc) => e.score + acc)
-          (scores, listOfEdges)
-        }
-        .sortWith((t1, t2) => t1._1 > t2._1)
-
-    //println(routesToEnd.mkString("\n"))
-    println(routesToEnd.head)
-
-    println(s"${(System.nanoTime() - t0) / 1000000} ms")
-    println("edges: " + countOfEdges)
-    routesToEnd.head
-
-  }
-
   /** Нужно рекурсивно пройти по вершинам и для каждой вычислять и возвращать только длиннейший путь */
-  def slightlyFasterSearch(graph: Map[AbstractNode, LinkedNode]): ScoredRoute = {
+  def calcLongestFromAll(graph: Map[AbstractNode, LinkedNode]): ScoredRoute = {
     val t0    = System.nanoTime()
     val start = graph(Start())
 
     var countOfEdges = 0
 
-    /*val cache: MutableMap[LinkedNode, ScoredRoute] =
-      scala.collection.mutable.Map.empty[LinkedNode, ScoredRoute] // кэш хранит единственное наиболее длинное ребро*/
+    val cache: MutableMap[LinkedNode, ScoredRoute] =
+      scala.collection.mutable.Map.empty[LinkedNode, ScoredRoute] // кэш хранит единственное наиболее длинное ребро
 
-    def longestForNode(node: LinkedNode, acc: List[Edge], score: Int): ScoredRoute = {
-      val longest = {
-        for {
-          edge <- node.links
-        } yield {
-          edge.right match {
-            case End() => ScoredRoute(score, acc)
-            case n: Node =>
-              countOfEdges += 1
-              longestForNode(graph(n), acc :+ edge, score + edge.score)
-          }
-        }
-      }.maxBy(_.score)
-      cache += node -> longest
-      longest
-    }
+    def longestForNode(node: LinkedNode, acc: List[Edge], score: Int): ScoredRoute =
+      cache.get(node) match {
+        case Some(value) => value
+        case None =>
+          val longest = {
+            for {
+              edge <- node.links
+            } yield {
+              edge.right match {
+                case End() =>
+                  ScoredRoute(score, acc :+ edge)
+                case n: Node =>
+                  val linked = graph(n)
+
+                  countOfEdges += 1
+                  // longest хранит весь путь от старта, который мы будем возвращать
+                  longestForNode(linked, acc :+ edge, score + edge.score)
+
+              }
+            }
+          }.maxBy(_.score)
+          /*val l = longest.route.dropWhile(_.left != node.node)
+          cache += node -> ScoredRoute(l.foldRight(0)((e,a) => e.score + a), l)*/
+          //cache += node -> longest
+          longest
+      }
 
     val longest = longestForNode(start, List.empty[Edge], 0)
 
+    println()
     println(longest)
     println(s"${(System.nanoTime() - t0) / 1000000} ms")
-    println("edges: " + countOfEdges)
+    println("edges passed: " + countOfEdges)
     //println(cache)
 
     longest
   }
-
-
-
-
-
-
 
 }

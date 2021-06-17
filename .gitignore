@@ -1,6 +1,7 @@
 *~
 .idea
 .code
+.bsp
 .metals
 target
 *assignment.sbt
